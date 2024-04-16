@@ -1,0 +1,609 @@
+---
+title: "Workflow: Mendelian disease-associated mutations"
+author: 
+    - Bernardo Chombo-Álvarez
+    - Miguel Ángel Varela Flores
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    code_fold: show
+header-includes:
+   - \usepackage{setspace}
+   - \singlespacing
+   - \usepackage{paralist}
+   - \let\itemsize\compactitem
+fontsize: 11pt
+mainfont: Calibri
+sansfont: Calibri
+monofont: Calibri
+indent: true
+---
+
+[Return back to project's description](https://bernardochomboalvarez.github.io/GenomeMapping/)
+\hfill\break
+
+# Reproducibility
+```{R reproducibility, include=TRUE,warning=FALSE,message=FALSE,eval=FALSE,echo=TRUE}
+session_info()
+
+# ─ Session info ─────────────────────────────
+#  setting  value
+#  version  R version 4.3.3 (2024-02-29)
+#  os       Manjaro Linux
+#  system   x86_64, linux-gnu
+#  ui       RStudio
+#  language (EN)
+#  collate  en_US.UTF-8
+#  ctype    en_US.UTF-8
+#  tz       America/Mexico_City
+#  date     2024-04-15
+#  rstudio  2023.12.0+369 Ocean Storm (desktop)
+#  pandoc   3.1.8 @ /usr/bin/ (via rmarkdown)
+# 
+# ─ Packages ─────────────────────────────────
+#  package     * version date (UTC) lib source
+#  cli           3.6.2   2023-12-11 [1] CRAN (R 4.3.2)
+#  colorspace    2.1-0   2023-01-23 [1] CRAN (R 4.3.1)
+#  digest        0.6.34  2024-01-11 [1] CRAN (R 4.3.2)
+#  dplyr       * 1.1.4   2023-11-17 [1] CRAN (R 4.3.2)
+#  evaluate      0.23    2023-11-01 [1] CRAN (R 4.3.2)
+#  fansi         1.0.6   2023-12-08 [1] CRAN (R 4.3.2)
+#  farver        2.1.1   2022-07-06 [1] CRAN (R 4.3.1)
+#  fastmap       1.1.1   2023-02-24 [1] CRAN (R 4.3.2)
+#  generics      0.1.3   2022-07-05 [1] CRAN (R 4.3.2)
+#  ggplot2     * 3.5.0   2024-02-23 [1] CRAN (R 4.3.2)
+#  glue          1.7.0   2024-01-09 [1] CRAN (R 4.3.2)
+#  gtable        0.3.4   2023-08-21 [1] CRAN (R 4.3.1)
+#  htmltools     0.5.7   2023-11-03 [1] CRAN (R 4.3.2)
+#  knitr         1.45    2023-10-30 [1] CRAN (R 4.3.2)
+#  labeling      0.4.3   2023-08-29 [1] CRAN (R 4.3.1)
+#  lifecycle     1.0.4   2023-11-07 [1] CRAN (R 4.3.2)
+#  magrittr      2.0.3   2022-03-30 [1] CRAN (R 4.3.1)
+#  munsell       0.5.0   2018-06-12 [1] CRAN (R 4.3.1)
+#  pillar        1.9.0   2023-03-22 [1] CRAN (R 4.3.1)
+#  pkgconfig     2.0.3   2019-09-22 [1] CRAN (R 4.3.1)
+#  purrr         1.0.2   2023-08-10 [1] CRAN (R 4.3.2)
+#  R6            2.5.1   2021-08-19 [1] CRAN (R 4.3.1)
+#  rlang         1.1.3   2024-01-10 [1] CRAN (R 4.3.2)
+#  rmarkdown     2.25    2023-09-18 [1] CRAN (R 4.3.2)
+#  rstudioapi    0.15.0  2023-07-07 [1] CRAN (R 4.3.2)
+#  scales        1.3.0   2023-11-28 [1] CRAN (R 4.3.2)
+#  sessioninfo   1.2.2   2021-12-06 [1] CRAN (R 4.3.2)
+#  tibble        3.2.1   2023-03-20 [1] CRAN (R 4.3.1)
+#  tidyr         1.3.1   2024-01-24 [1] CRAN (R 4.3.2)
+#  tidyselect    1.2.0   2022-10-10 [1] CRAN (R 4.3.2)
+#  utf8          1.2.4   2023-10-22 [1] CRAN (R 4.3.1)
+#  vctrs         0.6.5   2023-12-01 [1] CRAN (R 4.3.2)
+#  withr         3.0.0   2024-01-16 [1] CRAN (R 4.3.2)
+#  xfun          0.42    2024-02-08 [1] CRAN (R 4.3.2)
+#  yaml          2.3.8   2023-12-11 [1] CRAN (R 4.3.2)
+# 
+#  [1] /home/chombo/R/x86_64-pc-linux-gnu-library/4.3
+#  [2] /usr/lib/R/library
+
+
+# 
+# IMPORTANT!!!
+# All the data was cleaned using basic Linux commands. The used files are in the data/ folder inside the repo
+```
+\hfill\break
+
+# Overview
+```{R overview, include=TRUE, echo=FALSE, warning=FALSE, message=FALSE, eval=TRUE, fig.width=8, fig.height=5,fig.align="center"}
+## Libraries
+library(dplyr)
+library(ggplot2)
+library(waffle)
+
+## Set working directory
+setwd("/home/chombo/Downloads/Proyecto_Genomica_Humana/CHOMBO/data")
+
+## Import the data
+chr_names <- read.csv("chr_ids.csv",header = FALSE,sep = ",")
+names(chr_names) <- c("chr","chr_id","length")
+chr_ids <- chr_names$chr_id
+
+mutations <- read.csv("mutations_complete.csv",header = TRUE,sep = ",")
+mutations <- mutations %>%
+    distinct() %>%
+    select(-c("position","gene","chr"))
+
+## Create a dataframe with the total counts for each feature
+feature_counts <- as.data.frame(table(mutations$feature))
+names(feature_counts) <- c("feature","count")
+feature_counts <- feature_counts %>%
+    mutate(percentage = (count/sum(count))*100) %>%
+    mutate(percentage = trunc(percentage*10^2)/10^2)
+
+## Waffle Plot
+x <- feature_counts$percentage
+names(x) <- paste0(feature_counts$feature," (",feature_counts$percentage,"%)")
+# Waffle chart
+waffle(x, rows = 7,
+       colors = c("#8400EA", "#EA00DB", "#EA0066", "#EA8400"),
+       size = 1,legend_pos = "bottom")
+```
+\hfill\break
+
+## Set intronic and intergenic regions
+After examining the human genome's .gff file, we noticed the lack of intronic and intergenic regions. To solve this problem, we realized that it was pretty easy to define each of these regions: an intron it is a region that goes from the end of an exon to the beginning of the next one, and an intergenic region goes from the end of a gene to the beginning of the next one. However, there's the possibility of encounter genes inside genes or overlapped genes (and it's the same scenario for the exons). To overcome this issue, we took into account the ending positions of each of the genes and of each of the exons, and defined an intronic or intergenic region if and only if the beginning of the next gene/exon was after the ending of the last gene/exon, the ending of the next gene/exon was after the maximum ending and more importantly, the ending of the next gene/exon was greater that the maximum ending registered at the time it's being evaluated.
+\hfill\break
+
+### Libraries
+```{R 1libs, include=TRUE, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+library(dplyr)
+```
+\hfill\break
+
+### Code
+```{R 1data, include=TRUE, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+## Set working directory
+setwd("/home/chombo/Downloads/Proyecto_Genomica_Humana/CHOMBO/data")
+
+## Import the data
+chr_names <- read.csv("chr_ids.csv",header = FALSE,sep = ",")
+names(chr_names) <- c("chr","chr_id","stop")
+chr_names <- chr_names %>%
+    mutate(start = 1) %>%
+    arrange("chr","chr_id","start","stop")
+chr_ids <- chr_names$chr_id
+
+## Human Genome GRHCh88.p14 assembly
+grhc38_df <- read.table("GCF_000001405.40_GRCh38.p14_genomic.gff",skip = 9,header = FALSE,sep = "\t")
+grhc38_df <- grhc38_df[,1:7]
+names(grhc38_df) <- c("chr_id","source","feature","start","end","score","strand")
+grhc38_df <- grhc38_df[!(grhc38_df$feature %in% c("region")),]
+grhc38_df <- grhc38_df[(grhc38_df$chr_id %in% chr_ids),]
+
+## Region search
+full_data <- list()
+for (i in 1:length(unique(chr_names$chr_id))) {
+    ## Extract the data for only one chromosome
+    chr <- chr_names[i,"chr_id"]
+    chr_raw <- grhc38_df[grhc38_df$chr_id == chr,]
+    
+    ## Change the data type for "start" and "end" columns
+    chr_raw$start <- as.numeric(chr_raw$start)
+    chr_raw$end <- as.numeric(chr_raw$end)
+    
+    ## Reorder the dataframe and reset the index
+    chr_raw <- chr_raw[order(chr_raw$start,decreasing = FALSE),]
+    chr_raw <- chr_raw %>%
+        select(chr_id,feature,start,end) %>%
+        `rownames<-`(NULL)
+    
+    ## Create the object for intergenic regions
+    intergenic_regions <- data_frame()
+    
+    ## Create a data subset only with the genes
+    genes <- chr_raw[chr_raw$feature == "gene",]
+    
+    ## Define the limits of the chromosome coding region
+    pos_start <- min(genes$start)
+    pos_end <- max(genes$end)
+    
+    ## Create an intergenic region from the beginning of the chromosome to the start of the first gene
+    intergenic_regions <- rbind(intergenic_regions,c(chr,"intergenic",1,pos_start - 1))
+    
+    ## Remove the data before the start and end coding regions
+    ## Clean also other regions inside the genome
+    ## IMPORTANT!! introns and exons: only the ones inside genes
+    ## We are not counting the exons and introns from pseudogenes
+    chr_raw <- chr_raw[!(chr_raw$start <= (pos_start - 1)) & !(chr_raw$end >= (pos_end + 1)),]  %>%
+        `rownames<-`(NULL) %>%
+        tibble::rowid_to_column("index")
+    
+    
+    ## INTERGENIC REGION SEARCH
+    ## There might be genes inside genes completely or partially so we search for the maximum gene length
+    ## If the start position of the next gene is higher than the end of the previous one, and its end is higher than the previous' end and the max_end, then it's an intergenic region
+    max_end <- genes[1,"end"]
+    for (i in 2:length(genes$feature)) {
+        ## If the previous gene's end is higher than the max_end, then we change it
+        if (genes[i-1,"end"] >= max_end) {
+            max_end <- genes[i-1,"end"]
+        }
+        
+        ## Here we defint what it is an intergenic region
+        if ((genes[i,"start"] > genes[i-1,"end"]) & (genes[i,"end"] > genes[i-1,"end"]) & (genes[i,"end"] >= max_end) & (genes[i,"start"] > max_end)) {
+            intergenic <- c(chr, "intergenic", max_end + 1, genes[i,"start"] - 1)
+            intergenic_regions <- rbind(intergenic_regions, intergenic)
+            
+            ## Additionally, we clean what's inside the chr_raw so that we get rid of everything that corresponds to an intergenic region
+            pos_start <- max_end + 1
+            pos_end <- genes[i, "start"] - 1
+            chr_raw <- chr_raw[!((chr_raw$start >= pos_start) & (chr_raw$start <= pos_end) & (chr_raw$feature != "gene")),]
+        }
+    }
+    
+    ## We set the region corresponding to the end of the last gene and the end of the chromosome as an intergenic region
+    end <- c(chr,"intergenic",max(genes$end) + 1,chr_names[chr_names$chr_id == chr,]$stop)
+    intergenic_regions <- rbind(intergenic_regions,end)
+    names(intergenic_regions) <- c("chr_id","feature","start","end")
+    
+    ## Merge the intergenic regions with the chromosome raw data
+    chr_raw <- chr_raw %>% select(-index)
+    chr_wintergen <- rbind(chr_raw,intergenic_regions)
+    chr_wintergen$start <- as.numeric(chr_wintergen$start)
+    chr_wintergen$end <- as.numeric(chr_wintergen$end)
+    chr_wintergen <- chr_wintergen[order(chr_wintergen$start,decreasing = FALSE),]
+    chr_wintergen <- chr_wintergen %>%
+        select(chr_id,feature,start,end) %>%
+        `rownames<-`(NULL)
+    
+    ## We then split the dataframe into different dataframes with CDS, exons and genes information
+    cds <- chr_wintergen[chr_wintergen$feature == "CDS",]
+    exons <- chr_wintergen[chr_wintergen$feature == "exon",]
+    genes <- chr_wintergen[chr_wintergen$feature == "gene",] ## we repeat this so that we get no erros
+    
+    ## Now clean the merged dataframe so that we only stay with the exons and intergenic regions
+    ## As every exon inside the data is now inside genes, we do this
+    chr_wintergen <- chr_wintergen[(chr_wintergen$feature %in% c("intergenic","exon")),] %>%
+        distinct()
+    
+    
+    ## INTRONIC REGIONS
+    ## With a similar approach for the intergenic regions, we extract the exons between intergenic regions
+    ## We define an intron as the spaces between the first and last exons with the intergenic regions
+    ## We look for exons that are not overlapped
+    intronic_regions <- data_frame()
+    for (i in 2:length(intergenic_regions$feature)) {
+        ## Define the start position as the end of the previous intergenic region
+        ## Define the end position as the start of the next intergenic region
+        start <- as.numeric(intergenic_regions[i-1,"end"])
+        end <- as.numeric(intergenic_regions[i,"start"])
+        
+        ## Extract the data, i.e. exons
+        data <- exons[(exons$end < end & exons$start > start),] %>%
+            `rownames<-`(NULL)
+        
+        ## In case there were no exons, we continue
+        if (length(data$feature) == 0) {
+            next
+        }
+        
+        ## If there was a space between the first exon and the end of the previous intergenic region
+        if (start - data[1,"start"] <= -2) {
+            intron <- c(chr, "intron", start + 1, data[1,"start"] - 1)
+            intronic_regions <- rbind(intronic_regions, intron)
+        }
+        
+        ## If there was a space between the last exon and the beginning of the next intergenic region
+        if (data[length(data$feature),"end"] - end <= -2) {
+            intron <- c(chr, "intron", data[length(data$feature),"end"] + 1, end - 1)
+            intronic_regions <- rbind(intronic_regions, intron)
+        }
+        
+        ## If there was only one exon, we continue, else, the same exact logic for intergenic regions
+        if (length(data$feature) == 1) {
+            next
+        } else {
+            max_end <- data[1,"end"]
+            for (i in 2:length(data$feature)) {
+                ## Define the max_end
+                if (data[i-1,"end"] >= max_end) {
+                    max_end <- data[i-1,"end"]
+                }
+                
+                ## Look for intronic regions
+                if ((data[i,"start"] > data[i-1,"end"]) & (data[i,"end"] > data[i-1,"end"]) & (data[i,"end"] >= max_end) & (data[i,"start"] > max_end)) {
+                    intron <- c(chr, "intron", max_end + 1, data[i,"start"] - 1)
+                    intronic_regions <- rbind(intronic_regions, intron)
+                }
+            }
+        }
+    }
+    names(intronic_regions) <- c("chr_id","feature","start","end")
+    
+    ## Merge the complete data for each chromosome
+    complete <- rbind(genes,chr_wintergen,cds,exons,intronic_regions)
+    complete$start <- as.numeric(complete$start)
+    complete$end <- as.numeric(complete$end)
+    complete <- complete[order(complete$start),] %>%
+        `rownames<-`(NULL)
+    
+    ## Append them in a list
+    full_data[[chr]] <- complete
+}
+
+## Transform the list
+grhc_complete <- do.call(rbind, full_data) %>%
+    `rownames<-`(NULL)
+
+## Save the data
+write.csv(grhc_complete,file = "grhc38_complete.csv",row.names = FALSE,col.names = FALSE,quote = FALSE)
+
+## Save the data for each of the chromosomes
+grhc_complete <- grhc_complete[order(grhc_complete$chr_id),]
+for (chr in unique(grhc_complete$chr_id)) {
+    data <- grhc_complete[grhc_complete$chr_id == chr,]
+    data <- data[order(data$start),]
+    write.csv(data,file = paste0(chr,"_data.csv"),row.names = FALSE,col.names = FALSE,quote = FALSE)
+
+}
+```
+\hfill\break
+
+## Genome Mapping
+For the genome mapping, we used the *divide et vince* principle. First, we divided the data in subsets for each chromosome; then, each subset was divided into another subsets determined by the four categories. Until then, each of the mutations for each chromosome was mapped in this second subset. This approach is thought to be hierarchical and stratified. It is important to remark that all of the mutations were mapped.
+\hfill\break
+
+### Libraries
+```{R 2libs, include=TRUE, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+library(dplyr)
+library(ggplot2)
+```
+\hfill\break
+
+### Code
+```{R gsearch, include=TRUE, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+## Set working directory
+setwd("/home/chombo/Downloads/Proyecto_Genomica_Humana/CHOMBO/data")
+
+## Import the data
+## Chromosomes namnes
+chr_names <- read.csv("chr_ids.csv",header = FALSE,sep = ",")
+names(chr_names) <- c("chr","chr_id","length")
+chr_ids <- chr_names$chr_id
+
+## Mutations data
+clinvar_df <- read.table("clinvar.cleaned.tsv",header = FALSE,sep = "\t")
+names(clinvar_df) <- c("gene","chr","position","id")
+clinvar_df <- merge(clinvar_df,chr_names, by = "chr", all.x = TRUE)
+clinvar_df$chr_id <- as.character(clinvar_df$chr_id)
+clinvar_df <- clinvar_df %>%
+    select(-c("id","length"))
+
+## Human Genome annotation data
+grhc_complete <- read.csv("grhc38_complete.csv",header = TRUE,sep = ",")
+grhc_complete$start <- as.numeric(grhc_complete$start)
+grhc_complete$end <- as.numeric(grhc_complete$end)
+
+## Characterize the mutations
+## Divide the data for each of the chromosomes
+mutations <- list()
+for (chr in unique(grhc_complete$chr_id)) {
+    ## Create a reference for each one of the chromosomes
+    chr_ref <- grhc_complete %>%
+        filter(chr_id == chr) %>%
+        arrange(start) %>%
+        distinct() %>%
+        `rownames<-`(NULL) %>%
+        tibble::rowid_to_column("index")
+    
+    ## Create a data subset for the mutations of each chromosomes
+    chr_mut <- clinvar_df[clinvar_df$chr_id == chr,] %>%
+        arrange(position) %>%
+        `rownames<-`(NULL) %>%
+        tibble::rowid_to_column("index")
+
+    ## Map all the mutations in the reference genome data subset
+    mapped <- data_frame()
+    known_indexes <- c()
+    unknown_indexes <- c()
+    categories <- c("intergenic","CDS","intron","exon","gene") ## Each of this categories are hierarchically ordered
+    for (category in categories) {
+        ## Divide again the subset by each of the four categories
+        reference <- chr_ref %>% filter(feature == category)
+        
+        ## Now itterate all the subset of mutations for each chromosome
+        for (i in 1:length(chr_mut$position)) {
+            ## Skip known indexes
+            if (i %in% known_indexes) {
+                next
+            }
+            
+            ## Search index in the reference (only one result should be TRUE)
+            logic_res <- with(reference, start <= chr_mut[i,"position"] & end >= chr_mut[i,"position"])
+            
+            ## Store the indexes of the TRUE result
+            indexes <- which(logic_res)
+            
+            ## Continue if no index is found
+            if (length(indexes) == 0) {
+                next
+            } else {
+                ## Create a vector with the index and the category
+                mapped <- rbind(mapped,c(i,category))
+                known_indexes <- c(known_indexes,i)
+            }
+        }   
+    }
+    
+    ## If there is any unknown index, compare it against the mutations indexes
+    unknown_indexes <- chr_mut[!(chr_mut$index %in% known_indexes),"index"] %>% 
+        unname()
+    
+    ## Create a dataframe with the unknown indexes if any
+    if (length(unknown_indexes) != 0) {
+        unmapped <- cbind(unknown_indexes,"UNMAPPED")
+        unmapped <- as.data.frame(unmapped)
+        names(unmapped) <- c("index","feature")
+        unmapped$index <- as.numeric(unmapped$index)
+        complete <- rbind(mapped,unmapped)
+        complete <- complete[order(complete$index),]
+    } else {
+        ## Merge the known indexes
+        complete <- mapped
+        names(complete) <- c("index","feature")
+        complete$index <- as.numeric(complete$index)
+        complete <- complete[order(complete$index),]
+    }
+    
+    ## Add the chromosome's id data
+    complete <- merge(chr_mut,complete,by = "index") %>%
+        select(-index) %>%
+        `rownames<-`(NULL)
+        
+    ## Merge the data
+    mutations[[chr]] <- complete
+    
+}
+
+## Join all the data
+mutations <- do.call(rbind, mutations) %>%
+    `rownames<-`(NULL)
+mutations <- merge(mutations,chr_names, by="chr_id")
+mutations$chr <- paste0("Chr ",mutations$chr)
+mutations <- mutations %>%
+    select(-c("chr.y","length")) %>%
+    mutate(chr = paste(chr,chr.x,sep = " ")) %>%
+    select(-chr.x) %>%
+    distinct()
+```
+\hfill\break
+
+## Data arrangement and Plotting
+Finally, once he had our data completed, we proceeded to rearrange it. A contingency table was generated and it is the one that it's shown below. With the help of **ggplot2** R library, we generated the figures shown.
+\hfill\break
+
+### Libraries
+```{R 3libs, include=TRUE, echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE}
+library(dplyr)
+library(ggplot2)
+```
+\hfill\break
+
+### Data arrangement
+```{R data_arrangement, include=TRUE, echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE}
+## Set working directory
+setwd("/home/chombo/Downloads/Proyecto_Genomica_Humana/CHOMBO/data")
+
+## Import the data
+chr_names <- read.csv("chr_ids.csv",header = FALSE,sep = ",")
+names(chr_names) <- c("chr","chr_id","length")
+chr_ids <- chr_names$chr_id
+
+mutations <- read.csv("mutations_complete.csv",header = TRUE,sep = ",")
+mutations <- mutations %>%
+    distinct() %>%
+    select(-c("position","gene","chr"))
+
+## Extract the mutations per category for each of the chromosomes
+mut_arranged <- mutations %>%
+    mutate(count = 1) %>%
+    group_by(chr_id, feature) %>%
+    summarize(count = sum(count)) %>%
+    ungroup()
+
+## Make a contingency table with the four features as columns and the counts for each one for each of the chromosomes
+mut_contingence <- tidyr::pivot_wider(data = mut_arranged, names_from = feature, values_from = count)
+mut_contingence <- replace(mut_contingence, is.na(mut_contingence), 0) %>%
+    mutate(total = CDS+exon+intergenic+intron)
+
+## Modify the contingency table so that now it has the percentages
+mut_contingence.per <- mut_contingence %>%
+    mutate(CDS = trunc((CDS/total)*100*10^2)/10^2,
+           exon = trunc((exon/total)*100*10^2)/10^2,
+           intergenic = trunc((intergenic/total)*100*10^2)/10^2,
+           intron = trunc((intron/total)*100*10^2)/10^2)
+
+## Clear the contingency table with percentages
+mut_contingence.per <- merge(mut_contingence.per,chr_names, by = "chr_id") %>%
+    select(-length) %>%
+    mutate(id = paste0("Chr ",chr," (",total,")")) %>%
+    select(-c("chr_id","chr","total"))
+
+## Expand the table into two columns: id and feature
+mut_expanded <- tidyr::pivot_longer(data = mut_contingence.per, 
+                                    cols = -id, 
+                                    names_to = "feature", 
+                                    values_to = "count")
+
+## Create a dataframe with the totasl counts for each feature
+feature_counts <- as.data.frame(table(mutations$feature))
+names(feature_counts) <- c("feature","count")
+feature_counts <- feature_counts %>%
+    mutate(percentage = (count/sum(count))*100) %>%
+    mutate(percentage = trunc(percentage*10^2)/10^2)
+```
+\hfill\break
+
+### Plotting
+First, an overview of the mutations. There were 1,015,540 mutations identified (only considering the unique ones, i.e. unique positions, despite there were more than one possible mutation in a single position). Moreover, there were 653,005 identified mutations in coding regions (CDS), 52,925 in exons, 158,924 in intergenic regions and 150,686 in introns. 
+```{r plots1, include=TRUE, echo=FALSE, warning=FALSE, message=FALSE, eval=TRUE, fig.width=8, fig.height=8,fig.align="center"}
+## PLOTTING
+## Bar plot of all the features
+plot <- ggplot(feature_counts, aes(x = factor(feature), y = count, fill = factor(feature))) +
+    geom_bar(stat = "identity") + 
+    geom_text(aes(label = count), vjust = -0.5, size = 4) +
+    scale_fill_manual(values = c("#8400EA", "#EA00DB", "#EA0066", "#EA8400", "#DBEA00")) +
+    theme_classic() +
+    theme(
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        legend.position = "bottom", 
+        legend.title = element_blank(), 
+        legend.background = element_rect(colour = "white"),
+        plot.background = element_rect(fill = "white", colour = "white"),
+        panel.background = element_rect(fill = "white", colour = "black", linewidth = 1),
+        strip.background = element_rect(fill = "white", colour = "white"),
+        plot.title = element_text(size = 20)) +
+    xlab("Features") +
+    ylab("Frequency") +
+    labs(title = "Mendelian disease-associated mutations") +
+    annotate(geom="text", x=3.5, y=6e+05, label=paste0("Total = ",sum(feature_counts$count)),
+             size = 5,color="black")
+
+print(plot)
+
+## Pie chart of all the general features
+plot <- ggplot(feature_counts, aes(x = 1, y = count, fill = feature)) +
+    geom_bar(stat = "identity", show.legend = FALSE) + 
+    coord_polar(theta = "y") +
+    geom_text(aes(x=1.6, label=paste0(percentage, "%")),
+              position = position_stack(vjust=0.5)) +
+    scale_fill_manual(values = c("#8400EA", "#EA00DB", "#EA0066", "#EA8400", "#DBEA00")) +
+    theme_void() +
+    guides(fill = guide_legend(title = "Features")) + 
+    theme(legend.position = "right", 
+          legend.background = element_rect(colour = "white"),
+          plot.background = element_rect(fill = "white", colour = "white"),
+          panel.background = element_rect(fill = "white", colour = "white", linewidth = 1),
+          strip.background = element_rect(fill = "white", colour = "white"),
+          plot.title = element_text(size = 20),
+          axis.text.x = element_blank(),  # remove x axis labels
+          axis.ticks.x = element_blank(),  # remove x axis ticks
+          axis.text.y = element_blank(),  # remove y axis labels
+          axis.ticks.y = element_blank()) +
+    xlab("Features") +
+    ylab("Frequency")
+
+print(plot)
+```
+\hfill\break
+
+Here there are plots for each of the chromosomes and their distribution. Each percentage of the pie charts are adjusted to the amount of data each one of them has. For a better understanding, a contingency table that contains all the data per category, per chromosome is displayed below.
+```{R plots2, include=TRUE, echo=FALSE, warning=FALSE, message=FALSE, eval=TRUE, fig.width=8, fig.height=8,fig.align="center"}
+## Contingency table
+head(as.data.frame(mut_contingence),n = 25L)
+
+## Pie chart for each of the chromosomes
+plot <- ggplot(mut_expanded, aes(x = "", y = count, fill = feature)) +
+    geom_bar(stat = "identity") + 
+    coord_polar("y", start = 0) +
+    geom_text(aes(x=1.5, label=paste0(count, "%")),
+              position = position_stack(vjust=0.5),size=2.5) +
+    facet_wrap(vars(factor(id, levels = unique(id)))) +
+    scale_fill_manual(values = c("#8400EA", "#EA00DB", "#EA0066", "#EA8400", "#DBEA00")) +
+    theme_void() +
+    guides(fill=guide_legend(title="Features")) + 
+    theme(legend.position = "right", legend.background = element_rect(colour = "white"),
+          plot.background = element_rect(fill = "white", colour = "white"),
+          panel.background = element_rect(fill = "white", colour="white",linewidth = 1),
+          strip.background = element_rect(fill="white",colour = "white"),
+          plot.title = element_text(size = 20),
+          axis.text.x = element_blank(), #remove x axis labels
+          axis.ticks.x = element_blank(), #remove x axis ticks
+          axis.text.y = element_blank(),  #remove y axis labels
+          axis.ticks.y = element_blank()) +
+    xlab("Features") +
+    ylab("Frequency")
+
+print(plot)
+```
+\hfill\break
+
+# References
+1. Landrum, M. J., Chitipiralla, S., Brown, G. R., Chen, C., Gu, B., Hart, J., Hoffman, D., Jang, W., Kaur, K., Liu, C., Lyoshin, V., Maddipatla, Z., Maiti, R., Mitchell, J., O'Leary, N., Riley, G. R., Shi, W., Zhou, G., Schneider, V., Maglott, D., Holmes, J.B., Kattman, B. L. ClinVar: improvements to accessing data. Nucleic Acids Res. 2020;48(D1):D835-D844. doi: 10.1093/nar/gkz972. [PubMed PMID:31777943]
+2. UCSC Genome Browser: Kent WJ, Sugnet CW, Furey TS, Roskin KM, Pringle TH, Zahler AM, Haussler D. The human genome browser at UCSC. Genome Res. 2002 Jun;12(6):996-1006.

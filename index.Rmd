@@ -1,0 +1,98 @@
+---
+title: "Mendelian disease-associated mutations"
+author: 
+    - Bernardo Chombo-Álvarez
+    - Miguel Ángel Varela Flores
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    code_fold: show
+header-includes:
+   - \usepackage{setspace}
+   - \singlespacing
+   - \usepackage{paralist}
+   - \let\itemsize\compactitem
+fontsize: 11pt
+mainfont: Calibri
+sansfont: Calibri
+monofont: Calibri
+indent: true
+---
+
+# About the project
+This project aims to look for the mendelian disease-associated mutations in the 
+human genome ([GRCh83.p14 assembly](https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_45/gencode.v45.annotation.gtf.gz)), specifically if those mutations fall inside a 
+coding, intergenic, intronic or exonic region. The [mutations data](https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz) was obtained from the
+Clinvar database. From the mutations data, we only considered those that had been also identified in the OMIM database (Online Mendelian Inheritance in Man). Both reference and mutations datasets were cleaned and transformed (explained in detail in the [Workflow](doc/workflow.html)).
+
+**Access to the workflow by clicking [here](https://bernardochomboalvarez.github.io/GenomeMapping/doc/workflow.html)**
+
+# Data
+
+- **GRHc38.p14**: got from the [Genecode](https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_45/gencode.v45.annotation.gtf.gz)
+- **Mutations data**: got from [Clinvar](https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz)
+
+# Reproducibility
+```{r reproducibility, include=TRUE,warning=FALSE,message=FALSE,eval=FALSE,echo=TRUE}
+session_info()
+
+# ─ Session info ─────────────────────────────
+#  setting  value
+#  version  R version 4.3.3 (2024-02-29)
+#  os       Manjaro Linux
+#  system   x86_64, linux-gnu
+#  ui       RStudio
+#  language (EN)
+#  collate  en_US.UTF-8
+#  ctype    en_US.UTF-8
+#  tz       America/Mexico_City
+#  date     2024-04-15
+#  rstudio  2023.12.0+369 Ocean Storm (desktop)
+#  pandoc   3.1.8 @ /usr/bin/ (via rmarkdown)
+# 
+# ─ Packages ─────────────────────────────────
+#  package     * version date (UTC) lib source
+#  cli           3.6.2   2023-12-11 [1] CRAN (R 4.3.2)
+#  colorspace    2.1-0   2023-01-23 [1] CRAN (R 4.3.1)
+#  digest        0.6.34  2024-01-11 [1] CRAN (R 4.3.2)
+#  dplyr       * 1.1.4   2023-11-17 [1] CRAN (R 4.3.2)
+#  evaluate      0.23    2023-11-01 [1] CRAN (R 4.3.2)
+#  fansi         1.0.6   2023-12-08 [1] CRAN (R 4.3.2)
+#  farver        2.1.1   2022-07-06 [1] CRAN (R 4.3.1)
+#  fastmap       1.1.1   2023-02-24 [1] CRAN (R 4.3.2)
+#  generics      0.1.3   2022-07-05 [1] CRAN (R 4.3.2)
+#  ggplot2     * 3.5.0   2024-02-23 [1] CRAN (R 4.3.2)
+#  glue          1.7.0   2024-01-09 [1] CRAN (R 4.3.2)
+#  gtable        0.3.4   2023-08-21 [1] CRAN (R 4.3.1)
+#  htmltools     0.5.7   2023-11-03 [1] CRAN (R 4.3.2)
+#  knitr         1.45    2023-10-30 [1] CRAN (R 4.3.2)
+#  labeling      0.4.3   2023-08-29 [1] CRAN (R 4.3.1)
+#  lifecycle     1.0.4   2023-11-07 [1] CRAN (R 4.3.2)
+#  magrittr      2.0.3   2022-03-30 [1] CRAN (R 4.3.1)
+#  munsell       0.5.0   2018-06-12 [1] CRAN (R 4.3.1)
+#  pillar        1.9.0   2023-03-22 [1] CRAN (R 4.3.1)
+#  pkgconfig     2.0.3   2019-09-22 [1] CRAN (R 4.3.1)
+#  purrr         1.0.2   2023-08-10 [1] CRAN (R 4.3.2)
+#  R6            2.5.1   2021-08-19 [1] CRAN (R 4.3.1)
+#  rlang         1.1.3   2024-01-10 [1] CRAN (R 4.3.2)
+#  rmarkdown     2.25    2023-09-18 [1] CRAN (R 4.3.2)
+#  rstudioapi    0.15.0  2023-07-07 [1] CRAN (R 4.3.2)
+#  scales        1.3.0   2023-11-28 [1] CRAN (R 4.3.2)
+#  sessioninfo   1.2.2   2021-12-06 [1] CRAN (R 4.3.2)
+#  tibble        3.2.1   2023-03-20 [1] CRAN (R 4.3.1)
+#  tidyr         1.3.1   2024-01-24 [1] CRAN (R 4.3.2)
+#  tidyselect    1.2.0   2022-10-10 [1] CRAN (R 4.3.2)
+#  utf8          1.2.4   2023-10-22 [1] CRAN (R 4.3.1)
+#  vctrs         0.6.5   2023-12-01 [1] CRAN (R 4.3.2)
+#  withr         3.0.0   2024-01-16 [1] CRAN (R 4.3.2)
+#  xfun          0.42    2024-02-08 [1] CRAN (R 4.3.2)
+#  yaml          2.3.8   2023-12-11 [1] CRAN (R 4.3.2)
+# 
+#  [1] /home/chombo/R/x86_64-pc-linux-gnu-library/4.3
+#  [2] /usr/lib/R/library
+```
+
+# References
+1. Landrum, M. J., Chitipiralla, S., Brown, G. R., Chen, C., Gu, B., Hart, J., Hoffman, D., Jang, W., Kaur, K., Liu, C., Lyoshin, V., Maddipatla, Z., Maiti, R., Mitchell, J., O'Leary, N., Riley, G. R., Shi, W., Zhou, G., Schneider, V., Maglott, D., Holmes, J.B., Kattman, B. L. ClinVar: improvements to accessing data. Nucleic Acids Res. 2020;48(D1):D835-D844. doi: 10.1093/nar/gkz972. [PubMed PMID:31777943]
+2. UCSC Genome Browser: Kent WJ, Sugnet CW, Furey TS, Roskin KM, Pringle TH, Zahler AM, Haussler D. The human genome browser at UCSC. Genome Res. 2002 Jun;12(6):996-1006.
